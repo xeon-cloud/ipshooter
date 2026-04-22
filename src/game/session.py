@@ -56,9 +56,6 @@ class GameSession:
         self.loading = True
         self._init_game_state()
 
-    # -------------------------------
-    # Public API
-    # -------------------------------
     def run(self) -> None:
         while self.running:
             if self.main_menu.menu.is_enabled():
@@ -94,9 +91,6 @@ class GameSession:
     def disable_pause(self) -> None:
         self.pauses.append(int(round(time.time() - self.pause_time, 0)))
 
-    # -------------------------------
-    # Initialization helpers
-    # -------------------------------
     def _init_game_state(self) -> None:
         stats = methods.getData()["stats"]
         self.properties = compute_game_properties(methods.getLvlDiff(), stats)
@@ -149,9 +143,6 @@ class GameSession:
             pygame.draw.circle(surface, (255, 255, 255), (x, y), random.randint(1, 3))
         return surface
 
-    # -------------------------------
-    # Input / events
-    # -------------------------------
     def _handle_events(self) -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -206,9 +197,6 @@ class GameSession:
         self.player.rect.x = max(0, min(max_x, self.player.rect.x))
         self.player.rect.y = max(0, min(max_y, self.player.rect.y))
 
-    # -------------------------------
-    # Core gameplay
-    # -------------------------------
     def _activate_super(self, index: int) -> None:
         if index not in self.supers or len(self.supers[index]) != 1:
             return
@@ -326,9 +314,7 @@ class GameSession:
             if laser.rect.bottom < 0:
                 self.lasers.remove(laser)
 
-    # -------------------------------
-    # Render
-    # -------------------------------
+    # рендер
     def _draw_frame(self) -> None:
         self.background_y_offset += self.config.background_speed
         if self.background_y_offset >= self.config.height:
@@ -403,9 +389,7 @@ class GameSession:
         ratio = max(0.0, min(1.0, ratio))
         pygame.draw.rect(self.screen, color, (70, y, bar_width * ratio, bar_height), border_radius=10)
 
-    # -------------------------------
-    # Endgame / persistence
-    # -------------------------------
+    # логика завершения
     def _duration(self) -> tuple[int, int]:
         seconds = int(round(time.time() - self.start_time - sum(self.pauses)))
         return seconds // 60, seconds - 60 * (seconds // 60)
@@ -438,9 +422,7 @@ class GameSession:
         methods.up_lvl_of_difficulty()
         end.End_screen(self.screen, "victory", self.money, self.start_new_game, width=self.config.width, height=self.config.height)
 
-    # -------------------------------
-    # Loading screen
-    # -------------------------------
+    # загрузка интро
     def _run_loading_screen(self) -> None:
         font = pygame.font.Font(methods.load_font("PressStart2P-Regular"), 60)
         progress = 0.0
