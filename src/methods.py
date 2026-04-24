@@ -1,6 +1,12 @@
 import json
 import os
+import pygame
 import pygame_menu
+
+
+DEFAULT_SUPER_KEY_CODES = {1: pygame.K_z, 2: pygame.K_x}
+SUPER_FALLBACK_KEYS = {1: {pygame.K_1, pygame.K_KP1}, 2: {pygame.K_2, pygame.K_KP2}}
+
 
 def load_image(path, use_path=False): #Загружает картинки
     if use_path:
@@ -35,6 +41,82 @@ def getLvl() -> int: #Возврщает текущий лвл
 
 def getLvlDiff() -> int: #Возврщает текущий лвл сложности
     return getData()['user']['lvl_of_difficulty']
+
+
+def getFPS(default: int = 120) -> int: #Возвращает лимит FPS
+    data = getData()
+    raw_fps = data.get("user", {}).get("fps", default)
+    try:
+        fps = int(raw_fps)
+    except (TypeError, ValueError):
+        fps = default
+    return max(30, min(120, fps))
+
+
+def setFPS(value: int): #Изменяет лимит FPS
+    data = getData()
+    data.setdefault("user", {})
+    data["user"]["fps"] = max(30, min(120, int(value)))
+    dump(data)
+
+
+def getDefaultSuperKeyCode(index: int) -> int: #Возвращает дефолтную кнопку супера
+    return DEFAULT_SUPER_KEY_CODES.get(index, pygame.K_z)
+
+
+def _parse_key_name(key_name: str) -> int | None:
+    normalized = str(key_name).strip().lower()
+    if not normalized:
+        return None
+    legacy_aliases = {
+        "space": "space",
+        "lshift": "left shift",
+        "rshift": "right shift",
+        "lctrl": "left ctrl",
+        "rctrl": "right ctrl",
+        "lalt": "left alt",
+        "ralt": "right alt",
+    }
+    lookup_name = legacy_aliases.get(normalized, normalized)
+    try:
+        return pygame.key.key_code(lookup_name)
+    except (TypeError, ValueError):
+        return None
+
+
+def getSuperKeyCode(index: int) -> int: #Возвращает pygame-код клавиши супера
+    user_data = getData().get("user", {})
+    raw_code = user_data.get(f"super_{index}_key_code")
+    if isinstance(raw_code, int):
+        return raw_code
+
+    legacy_name = user_data.get(f"super_{index}_key")
+    if legacy_name is not None:
+        parsed = _parse_key_name(legacy_name)
+        if parsed is not None:
+            return parsed
+
+    return getDefaultSuperKeyCode(index)
+
+
+def setSuperKeyCode(index: int, key_code: int): #Изменяет клавишу супера
+    normalized = int(key_code)
+    data = getData()
+    data.setdefault("user", {})
+    data["user"][f"super_{index}_key_code"] = normalized
+    data["user"][f"super_{index}_key"] = pygame.key.name(normalized)
+    dump(data)
+
+
+def getSuperKeyCodes(index: int) -> set[int]: #Возвращает все допустимые клавиши супера
+    return {getSuperKeyCode(index)} | SUPER_FALLBACK_KEYS.get(index, set())
+
+
+def getSuperKeyDisplay(index: int) -> str: #Возвращает отображаемое имя клавиши
+    key_name = pygame.key.name(getSuperKeyCode(index))
+    if not key_name:
+        key_name = pygame.key.name(getDefaultSuperKeyCode(index))
+    return key_name.upper()
 
 
 def updateCoins(newValue: int): #Присваивает значение монетам игрока

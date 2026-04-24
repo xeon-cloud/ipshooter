@@ -14,7 +14,7 @@ import menu
 import methods
 import pause_menu
 
-from .config import GameConfig, SUPER_1_KEYS, SUPER_2_KEYS
+from .config import GameConfig
 from .difficulty import compute_game_properties, enemy_spawn_weights, enemy_templates
 from .entities import Enemy, Laser, Player
 
@@ -52,6 +52,13 @@ class GameSession:
         )
         self.pause_menu.menu.disable()
 
+        self.current_fps = methods.getFPS(self.config.fps)
+        self.super_1_keys = methods.getSuperKeyCodes(1)
+        self.super_2_keys = methods.getSuperKeyCodes(2)
+        self.super_1_hint = methods.getSuperKeyDisplay(1)
+        self.super_2_hint = methods.getSuperKeyDisplay(2)
+        self._next_settings_refresh_at = 0.0
+
         self.running = True
         self.loading = True
         self._init_game_state()
@@ -68,7 +75,8 @@ class GameSession:
                 if not self.running:
                     continue
 
-            self.clock.tick(self.config.fps)
+            self._refresh_runtime_settings()
+            self.clock.tick(self.current_fps)
             keys = pygame.key.get_pressed()
             self._apply_keyboard_movement(keys)
 
@@ -83,6 +91,17 @@ class GameSession:
             self._draw_frame()
 
         pygame.quit()
+
+    def _refresh_runtime_settings(self) -> None:
+        now = time.time()
+        if now < self._next_settings_refresh_at:
+            return
+        self._next_settings_refresh_at = now + 0.5
+        self.current_fps = methods.getFPS(self.config.fps)
+        self.super_1_keys = methods.getSuperKeyCodes(1)
+        self.super_2_keys = methods.getSuperKeyCodes(2)
+        self.super_1_hint = methods.getSuperKeyDisplay(1)
+        self.super_2_hint = methods.getSuperKeyDisplay(2)
 
     def start_new_game(self) -> None:
         self._init_game_state()
@@ -150,9 +169,9 @@ class GameSession:
                 continue
 
             if event.type == pygame.KEYDOWN:
-                if event.key in SUPER_1_KEYS:
+                if event.key in self.super_1_keys:
                     self._activate_super(1)
-                elif event.key in SUPER_2_KEYS:
+                elif event.key in self.super_2_keys:
                     self._activate_super(2)
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -360,7 +379,7 @@ class GameSession:
         self.screen.blit(font_main.render(f"{minutes}:{seconds}", True, (255, 255, 255)), (460, 20))
 
         hint_font = pygame.font.Font(methods.load_font("PressStart2P-Regular"), 12)
-        hints = ["Управление: стрелки", "Супер 1: Z или 1", "Супер 2: X или 2"]
+        hints = ["Управление: стрелки", f"Супер 1: {self.super_1_hint} или 1", f"Супер 2: {self.super_2_hint} или 2"]
         for idx, line in enumerate(hints):
             self.screen.blit(hint_font.render(line, True, (255, 255, 255)), (40, 115 + idx * 20))
 
@@ -471,5 +490,6 @@ class GameSession:
             else:
                 self.loading = False
 
-            self.clock.tick(self.config.fps)
+            self._refresh_runtime_settings()
+            self.clock.tick(self.current_fps)
             pygame.display.flip()
